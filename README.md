@@ -19,7 +19,7 @@ L'infrastructure sera entièrement gérée sous forme de code (**IaC**) avec **T
 
 Le diagramme ci-dessous illustre l'architecture réseau (répartition en sous-réseaux public/privé) et le cycle de vie complet d'un incident de sécurité, de la détection à la remédiation.
 
-![Architecture du projet - Flux & remédiation](dat.png)
+![Architecture du projet - Flux & remédiation](img/dat.png)
 
 ### Déroulement théorique d'une attaque et auto-remédiation :
 
