@@ -27,3 +27,23 @@ Le diagramme ci-dessous illustre l'architecture réseau (répartition en sous-r�
 2. **Le Mirroring (Flux Bleu) :** La fonctionnalité native *AWS VPC Traffic Mirroring* duplique ce trafic réseau et l'encapsule pour l'envoyer vers l'instance EC2 "NIDS" (hébergeant Suricata), isolée dans le Subnet Privé.
 3. **L'Alerte (Flux Orange) :** Suricata identifie la signature de l'attaque. L'agent CloudWatch installé sur la machine lit ce log local et transmet l'alerte vers AWS CloudWatch Logs, ce qui déclenche une règle EventBridge.
 4. **La Remédiation (Flux Vert) :** EventBridge invoque la fonction Lambda Python. Le script extrait l'IP source de l'attaquant depuis le log et effectue un appel API pour ajouter instantanément une règle de blocage (`DENY`) sur la NACL du Subnet Public. Le trafic de l'attaquant est coupé net.
+
+## Développement & vérifications
+
+### Connectivité de l'EC2 victime
+
+On vérifie que l'EC2 victime possède bien une IPv4 publique, elle est output à la fin du `terraform apply` ici : 
+
+```
+output "victim_public_ip" {
+  description = "L'adresse IP publique pour attaquer la victime"
+  value       = aws_instance.ar_ec2_victim.public_ip
+}
+```
+
+On peut alors s'y connecter via ssh et tester une commande ping vers l'extérieur. Cela montre que :
+
+1. L'instance est accessible depuis l'extérieur en SSH (port 22)
+2. L'instance dispose d'un accès à internet (ici `8.8.8.8`)
+
+![ping depuis la victime](img/vitcim_ping_ok.png)

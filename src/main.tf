@@ -112,3 +112,52 @@ resource "aws_network_acl" "ar_nacl_public" {
     Name = "ar-nacl-public"
   }
 }
+
+# ==========
+# EC2 Victime (Ubuntu 24)
+# ==========
+
+# Recherche d'AMI
+data "aws_ami" "ubuntu_24" {
+  most_recent = true
+  owners      = ["099720109477"] # ID Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+# setup connexion SSH
+resource "aws_key_pair" "ar_key_pair" {
+  key_name   = "ar-ssh-key"
+  public_key = file("/home/ubuntu/.ssh/id_ed25519.pub") 
+}
+
+resource "aws_instance" "ar_ec2_victim" {
+  ami           = data.aws_ami.ubuntu_24.id
+  instance_type = "t3.micro"
+  
+  # REMPLACEZ CECI par le nom de votre clé SSH AWS (ex: "ma-cle-paris")
+  key_name      = aws_key_pair.ar_key_pair.key_name
+  
+  # Placement dans le réseau PUBLIC
+  subnet_id                   = aws_subnet.ar_subnet_public.id
+  vpc_security_group_ids      = [aws_security_group.ar_sg_victim.id]
+  associate_public_ip_address = true # car subnet public
+
+  tags = {
+    Name = "ar-ec2-victim"
+  }
+}
+
+# affichage ip
+output "victim_public_ip" {
+  description = "L'adresse IP publique pour attaquer la victime"
+  value       = aws_instance.ar_ec2_victim.public_ip
+}
