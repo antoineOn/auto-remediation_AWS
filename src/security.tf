@@ -6,7 +6,8 @@ resource "aws_security_group" "ar_sg_victim" {
   name        = "ar-sg-victim"
   description = "SSH autorise en entree pour la victime"
   vpc_id      = aws_vpc.ar_vpc_main.id
-
+  
+  # trivy:ignore:AVD-AWS-0107 - Risque accepte : Honeypot intentionnellement exposé pour le NIDS
   ingress {
     description = "SSH depuis Internet"
     from_port   = 22

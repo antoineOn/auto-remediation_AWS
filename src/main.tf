@@ -142,9 +142,13 @@ resource "aws_key_pair" "ar_key_pair" {
 resource "aws_instance" "ar_ec2_victim" {
   ami           = data.aws_ami.ubuntu_24.id
   instance_type = "t3.micro"
-  
-  # REMPLACEZ CECI par le nom de votre clé SSH AWS (ex: "ma-cle-paris")
   key_name      = aws_key_pair.ar_key_pair.key_name
+
+  # Chiffrement du disque au repos
+  root_block_device { encrypted = true }
+
+  # Protection SSRF (IMDSv2)
+  metadata_options { http_tokens = "required" }
   
   # Placement dans le réseau PUBLIC
   subnet_id                   = aws_subnet.ar_subnet_public.id
