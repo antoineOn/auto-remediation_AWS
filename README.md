@@ -47,3 +47,18 @@ On peut alors s'y connecter via ssh et tester une commande ping vers l'extérieu
 2. L'instance dispose d'un accès à internet (ici `8.8.8.8`)
 
 ![ping depuis la victime](img/vitcim_ping_ok.png)
+
+### Connectivité de l'EC2 NIDS
+
+On configure exceptionellement une règle de security group sur l'EC2 NIDS autorisant les requêtes *ICMP* depuis le subnet publique. 
+
+Lors de la création de l'EC2 NIDS, on visualise son adresse IPv4 (privée) : 
+
+![IPv4 privee de l'EC2 NIDS](img/ip_privee_nids.png)
+
+Puis, on la ping depuis l'EC2 victime
+
+![ping de l'EC2 NIDS depuis l'EC2 victime](img/nids_ping_ok.png)
+
+Cela fonctionne bien, on retire alors la règle autorisant les paquets ICMP sur l'EC2 NIDS. On laisse uniquement le port UDP 4789 ouvert, c'est celui que Suricata utilisera.
+
