@@ -180,6 +180,19 @@ resource "aws_instance" "ar_ec2_nids" {
   vpc_security_group_ids      = [aws_security_group.ar_sg_nids.id]
   associate_public_ip_address = false # On cache le NIDS d'Internet
 
+  # Provisioning
+  user_data = <<-EOF
+              #!/bin/bash
+              apt-get update -y
+              apt-get install -y suricata jq
+              
+              # Activation du service au demarrage
+              systemctl enable suricata
+              systemctl start suricata
+              EOF
+
+  user_data_replace_on_change = true
+
   tags = {
     Name = "ar-ec2-nids"
   }
