@@ -78,6 +78,53 @@ resource "aws_route_table_association" "ar_rt_assoc_public" {
   route_table_id = aws_route_table.ar_rt_public.id
 }
 
+# 
+# NAT GATEWAY & ROUTAGE PRIVÉ
+# ==========
+
+# Elastic IP pour le NAT Gateway
+resource "aws_eip" "ar_eip_nat" {
+  domain = "vpc"
+  
+  tags = {
+    Name = "ar-eip-nat"
+  }
+}
+
+# NAT Gateway (subnet public)
+resource "aws_nat_gateway" "ar_nat_gw" {
+  allocation_id = aws_eip.ar_eip_nat.id
+  subnet_id     = aws_subnet.ar_subnet_public.id
+
+  tags = {
+    Name = "ar-nat-gateway"
+  }
+
+  # Internet Gateway doit d'abord exister
+  depends_on = [aws_internet_gateway.ar_igw_main]
+}
+
+# Table de routage pour le subnet prive
+resource "aws_route_table" "ar_rt_private" {
+  vpc_id = aws_vpc.ar_vpc_main.id
+
+  # On envoie tout vers le NAT Gateway
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.ar_nat_gw.id
+  }
+
+  tags = {
+    Name = "ar-rt-private"
+  }
+}
+
+# On lie cette table au subnet PRIVE
+resource "aws_route_table_association" "ar_rt_assoc_private" {
+  subnet_id      = aws_subnet.ar_subnet_private.id
+  route_table_id = aws_route_table.ar_rt_private.id
+}
+
 # ==========
 # NACL
 # ==========
@@ -183,12 +230,34 @@ resource "aws_instance" "ar_ec2_nids" {
   # Provisioning
   user_data = <<-EOF
               #!/bin/bash
-              apt-get update -y
-              apt-get install -y suricata jq
+
+              # log
+              touch /home/ubuntu/startup_log.txt
+              chown ubuntu:ubuntu /home/ubuntu/startup_log.txt
               
+              echo "Welcome to the NIDS (Suricata)" > /home/ubuntu/hello.txt
+              chown ubuntu:ubuntu /home/ubuntu/hello.txt
+
+              # desactiver pop-ups interactifs
+              export DEBIAN_FRONTEND=noninteractive >> /home/ubuntu/startup_log.txt
+              sed -i 's/#$nrconf{restart} = '"'"'i'"'"';/$nrconf{restart} = '"'"'a'"'"';/g' /etc/needrestart/needrestart.conf || true >> /home/ubuntu/startup_log.txt
+              while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done
+
+              echo "Pop-ups desactives" >> /home/ubuntu/hello.txt
+
+              apt-get update -y >> /home/ubuntu/startup_log.txt
+              apt-get install -yq \
+                -o Dpkg::Options::="--force-confdef" \
+                -o Dpkg::Options::="--force-confold" \
+                suricata jq >> /home/ubuntu/startup_log.txt
+              
+              echo "Suricata installé" >> /home/ubuntu/hello.txt
+
               # Activation du service au demarrage
-              systemctl enable suricata
-              systemctl start suricata
+              systemctl enable suricata >> /home/ubuntu/startup_log.txt
+              systemctl start suricata >> /home/ubuntu/startup_log.txt
+
+              echo "Suricata activé" >> /home/ubuntu/hello.txt 
               EOF
 
   user_data_replace_on_change = true
