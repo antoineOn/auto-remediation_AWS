@@ -62,3 +62,14 @@ Puis, on la ping depuis l'EC2 victime
 
 Cela fonctionne bien, on retire alors la règle autorisant les paquets ICMP sur l'EC2 NIDS. On laisse uniquement le port UDP 4789 ouvert, c'est celui que Suricata utilisera.
 
+### Configuration du mirroring
+
+> Pour des raisons de simplicité (environnement de développement), on rend la [policy de l'user IAM](./ar-iam-user-terraform-policy.json) beaucoup plus permissive. 
+
+On ajoute une règle au security group du NIDS afin qu'il puisse se faire administrer en SSH par la victime (à laquelle on se connecte en SSH)
+
+Pour administrer le NIDS en passant par la victime, on utilise l'option `-J` de ssh :
+
+```sh
+ssh -J ubuntu@IP_VICTIME -i ~/.ssh/id_ed25519 ubuntu@IP_NIDS
+```
