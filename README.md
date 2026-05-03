@@ -62,6 +62,40 @@ Puis, on la ping depuis l'EC2 victime
 
 Cela fonctionne bien, on retire alors la règle autorisant les paquets ICMP sur l'EC2 NIDS. On laisse uniquement le port UDP 4789 ouvert, c'est celui que Suricata utilisera.
 
+## Activation du NIDS
+
+### Installation et configuration de Suricata
+
+> La configuration est réalisée au travers du champ `user-data`.
+
+L'EC2 NIDS accède à internet par le biais d'une NAT Gateway, avant de lancer une installation, on vérifie qu'elle a bien accès à internet : 
+
+```sh
+until ping -c1 8.8.8.8 &>/dev/null; do
+    sleep 5
+done
+```
+
+Une fois Suricata installé, il faut modifier les paramètres pour que l'écoute soit effectuée sur l'interface réseau exacte de l'EC2 (et non pas `eth0`). On obtient l'interface de l'EC2 de cette manière : 
+
+```sh
+MAIN_IFACE=$(ip route show default | awk '/default/ {print $$5}')
+```
+
+Puis on met à jour les fichiers de configuration :
+
+```sh
+sed -i "s/eth0/$${MAIN_IFACE}/g" /etc/suricata/suricata.yaml
+```
+
+Il ne reste plus qu'à mettre à jour puis activer le service : 
+
+```sh
+suricata-update
+systemctl enable suricata
+systemctl start suricata
+```
+
 ### Configuration du mirroring
 
 > Pour des raisons de simplicité (environnement de développement), on rend la [policy de l'user IAM](./ar-iam-user-terraform-policy.json) beaucoup plus permissive. 
@@ -72,4 +106,16 @@ Pour administrer le NIDS en passant par la victime, on utilise l'option `-J` de 
 
 ```sh
 ssh -J ubuntu@IP_VICTIME -i ~/.ssh/id_ed25519 ubuntu@IP_NIDS
+```
+
+### Vérification du fonctionnement du NIDS
+
+Une fois connectés, on vérifie que le service tourne : 
+
+![Le service suricata est bien activé](img/suricata-service-enabled.png)
+
+Je fais un nmap sur le port ssh de la victime avec un appareil externe (attaquant) : 
+
+```sh
+$ nmap -p 22 -A IP_PUBLIQUE_VICTIME
 ```

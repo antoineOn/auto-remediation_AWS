@@ -245,6 +245,13 @@ resource "aws_instance" "ar_ec2_nids" {
 
               echo "Pop-ups desactives" >> /home/ubuntu/hello.txt
 
+              # Attendre qu'Internet soit vraiment disponible
+              until ping -c1 8.8.8.8 &>/dev/null; do
+                sleep 5
+              done
+
+              echo "Connexion OK" >> /home/ubuntu/hello.txt
+
               apt-get update -y >> /home/ubuntu/startup_log.txt
               apt-get install -yq \
                 -o Dpkg::Options::="--force-confdef" \
@@ -253,7 +260,16 @@ resource "aws_instance" "ar_ec2_nids" {
               
               echo "Suricata installé" >> /home/ubuntu/hello.txt
 
+              # chercher l'interface reseau de la machine
+              MAIN_IFACE=$(ip route show default | awk '/default/ {print $$5}')
+
+              # mettre a jour l'interface utilisée par suricata
+              sed -i "s/eth0/$${MAIN_IFACE}/g" /etc/suricata/suricata.yaml
+              sed -i 's/checksum-validation: yes/checksum-validation: no/g' /etc/suricata/suricata.yaml
+              sed -i 's/checksum-checks: yes/checksum-checks: no/g' /etc/suricata/suricata.yaml
+              
               # Activation du service au demarrage
+              suricata-update >> /home/ubuntu/startup_log.txt
               systemctl enable suricata >> /home/ubuntu/startup_log.txt
               systemctl start suricata >> /home/ubuntu/startup_log.txt
 
