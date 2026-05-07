@@ -245,6 +245,14 @@ resource "aws_instance" "ar_ec2_nids" {
 
               echo "Pop-ups desactives" >> /home/ubuntu/hello.txt
 
+              # Creation de 2 Go en SWAP
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+              echo "Swap de 2 Go active" >> /home/ubuntu/hello.txt
+
               # Attendre qu'Internet soit vraiment disponible
               until ping -c1 8.8.8.8 &>/dev/null; do
                 sleep 5
@@ -261,17 +269,25 @@ resource "aws_instance" "ar_ec2_nids" {
               echo "Suricata installé" >> /home/ubuntu/hello.txt
 
               # chercher l'interface reseau de la machine
-              MAIN_IFACE=$(ip route show default | awk '/default/ {print $$5}')
-
-              # mettre a jour l'interface utilisée par suricata
-              sed -i "s/eth0/$${MAIN_IFACE}/g" /etc/suricata/suricata.yaml
+              MAIN_IFACE=$(ls /sys/class/net | grep -v lo | head -n 1)
+              
+              # ignorer les faux checksums du Traffic Mirroring AWS
               sed -i 's/checksum-validation: yes/checksum-validation: no/g' /etc/suricata/suricata.yaml
               sed -i 's/checksum-checks: yes/checksum-checks: no/g' /etc/suricata/suricata.yaml
+              
+              # Forcer a ecouter sur la bonne interface reseau
+              mkdir -p /etc/systemd/system/suricata.service.d
+              echo "[Service]" > /etc/systemd/system/suricata.service.d/override.conf
+              echo "ExecStart=" >> /etc/systemd/system/suricata.service.d/override.conf
+              echo "ExecStart=/usr/bin/suricata -D --af-packet=$${MAIN_IFACE} -c /etc/suricata/suricata.yaml --pidfile /run/suricata.pid" >> /etc/systemd/system/suricata.service.d/override.conf
+              
+              # On indique à Linux de prendre en compte cette nouvelle configuration
+              systemctl daemon-reload
               
               # Activation du service au demarrage
               suricata-update >> /home/ubuntu/startup_log.txt
               systemctl enable suricata >> /home/ubuntu/startup_log.txt
-              systemctl start suricata >> /home/ubuntu/startup_log.txt
+              systemctl restart suricata >> /home/ubuntu/startup_log.txt
 
               echo "Suricata activé" >> /home/ubuntu/hello.txt 
               EOF
