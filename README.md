@@ -114,8 +114,10 @@ Une fois connectés, on vérifie que le service tourne :
 
 ![Le service suricata est bien activé](img/suricata-service-enabled.png)
 
-Je fais un nmap sur le port ssh de la victime avec un appareil externe (attaquant) : 
+Je tente de me connecter au port ssh de la victime avec un appareil externe (attaquant) : 
 
-```sh
-$ nmap -p 22 -A IP_PUBLIQUE_VICTIME
-```
+![tentative de connexion en ssh](./img/terminal-attaquant.png)
+
+Suricata remonte bien l'attaque : 
+
+![attaque detectee par suricata](./img/attaque-detectee-suricata.png)
