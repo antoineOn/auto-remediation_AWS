@@ -160,6 +160,36 @@ resource "aws_network_acl" "ar_nacl_public" {
   }
 }
 
+# ==========
+# IAM : Droits CloudWatch pour le NIDS
+# ==========
+
+# autorise l'EC2 a assumer ce role
+resource "aws_iam_role" "ar_nids_cw_role" {
+  name = "ar-nids-cw-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = { Service = "ec2.amazonaws.com" }
+      }
+    ]
+  })
+}
+
+# Attachement de la policy CW
+resource "aws_iam_role_policy_attachment" "ar_nids_cw_policy" {
+  role       = aws_iam_role.ar_nids_cw_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+# profil d'Instance (pour attacher le role au nIDS)
+resource "aws_iam_instance_profile" "ar_nids_profile" {
+  name = "ar-nids-profile"
+  role = aws_iam_role.ar_nids_cw_role.name
+}
 
 # =========
 # Instances EC2
@@ -200,6 +230,7 @@ resource "aws_instance" "ar_ec2_victim" {
 
   # Protection SSRF (IMDSv2)
   metadata_options { http_tokens = "required" }
+
   
   # subnet PUBLIC
   subnet_id                   = aws_subnet.ar_subnet_public.id
@@ -220,8 +251,16 @@ resource "aws_instance" "ar_ec2_nids" {
   key_name      = aws_key_pair.ar_key_pair.key_name
 
   root_block_device { encrypted = true }
-  metadata_options { http_tokens = "required" }
-  
+
+  # Protection SSRF
+  metadata_options { 
+    http_tokens                 = "required" 
+    http_put_response_hop_limit = 2
+  }
+
+  # attachement du role a l'instance
+  iam_instance_profile = aws_iam_instance_profile.ar_nids_profile.name
+
   # subnet PRIVE
   subnet_id                   = aws_subnet.ar_subnet_private.id
   vpc_security_group_ids      = [aws_security_group.ar_sg_nids.id]
@@ -290,6 +329,40 @@ resource "aws_instance" "ar_ec2_nids" {
               systemctl restart suricata >> /home/ubuntu/startup_log.txt
 
               echo "Suricata activé" >> /home/ubuntu/hello.txt 
+              
+              # CW
+
+              # Telechargement et installation de CW agent
+              wget https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+              dpkg -i -E ./amazon-cloudwatch-agent.deb
+
+              # fichier configuration CW
+              cat << 'CWEOF' > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+              {
+                "agent": {
+                  "run_as_user": "root"
+                },
+                "logs": {
+                  "logs_collected": {
+                    "files": {
+                      "collect_list": [
+                        {
+                          "file_path": "/var/log/suricata/fast.log",
+                          "log_group_name": "/secops/suricata/alerts",
+                          "log_stream_name": "{instance_id}",
+                          "timezone": "UTC"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+              CWEOF
+
+              # demarrage du CW agent
+              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+              
+              echo "Agent CloudWatch active" >> /home/ubuntu/hello.txt
               EOF
 
   user_data_replace_on_change = true

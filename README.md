@@ -121,3 +121,49 @@ Je tente de me connecter au port ssh de la victime avec un appareil externe (att
 Suricata remonte bien l'attaque : 
 
 ![attaque detectee par suricata](./img/attaque-detectee-suricata.png)
+
+## Intégration de CloudWatch
+
+On intègre l'agent CloudWatch dans le NIDS afin qu'il remonte les logs vers CloudWatch.
+
+### Mise en place & configuration de l'agent
+
+On attache un rôle à l'instance NIDS afin qu'elle puisse écrire dans CloudWatch. L'ARN du rôle est le suivant  `arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy`.
+
+Depuis le script user-data, on télécharge l'agent puis on le configure via le fichier `/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json` :
+
+```json
+{
+  "agent": {
+    "run_as_user": "root"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/suricata/fast.log",
+            "log_group_name": "/secops/suricata/alerts",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+Cela copie alors tous les logs de suricata vers CloudWatch.
+
+
+### Vérification
+
+On cherche à nouveau à attaquer la machine victime, toujours en effectuant de la reconnaissance : 
+
+- Tentatives de connexion ssh : `for i in {1..20}; do ssh -o ConnectTimeout=1 fakeuser@IP_PUBLIQUE & done`
+- Scan Nmap : `nmap -p 22 -A IP_PUBLIQUE`
+
+L'attaque est bien remontée dans CloudWatch :
+
+![attaque depuis CloudWatch](./img/attaque-depuis-cloud-watch.png)
