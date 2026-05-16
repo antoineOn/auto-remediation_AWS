@@ -167,3 +167,19 @@ On cherche à nouveau à attaquer la machine victime, toujours en effectuant de 
 L'attaque est bien remontée dans CloudWatch :
 
 ![attaque depuis CloudWatch](./img/attaque-depuis-cloud-watch.png)
+
+### Amélioration
+
+Pour avoir plus d'informations, je choisi de monitorer le fichier `eve.json` qui contient plus d'informations et est plus complet que `fast.log`. Il remonte l'ip de l'attaquant et l'attaque tentée. Je l'affiche via l'onglet *Log analytics* de CloudWatch : 
+
+```
+SOURCE "arn:aws:logs:eu-west-3:***:log-group:/secops/suricata/eve" START=-3600s END=0s |
+fields @timestamp, src_ip, dest_ip, alert.signature, alert.category
+| filter event_type = "alert"
+| sort @timestamp desc
+| limit 50
+```
+
+Cela donne les alertes suivantes : 
+
+![Alertes CW depuis eve.json](./img/eve-depuis-cw.png)

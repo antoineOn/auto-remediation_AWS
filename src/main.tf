@@ -160,37 +160,6 @@ resource "aws_network_acl" "ar_nacl_public" {
   }
 }
 
-# ==========
-# IAM : Droits CloudWatch pour le NIDS
-# ==========
-
-# autorise l'EC2 a assumer ce role
-resource "aws_iam_role" "ar_nids_cw_role" {
-  name = "ar-nids-cw-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = { Service = "ec2.amazonaws.com" }
-      }
-    ]
-  })
-}
-
-# Attachement de la policy CW
-resource "aws_iam_role_policy_attachment" "ar_nids_cw_policy" {
-  role       = aws_iam_role.ar_nids_cw_role.name
-  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-}
-
-# profil d'Instance (pour attacher le role au nIDS)
-resource "aws_iam_instance_profile" "ar_nids_profile" {
-  name = "ar-nids-profile"
-  role = aws_iam_role.ar_nids_cw_role.name
-}
-
 # =========
 # Instances EC2
 # =========
@@ -347,8 +316,8 @@ resource "aws_instance" "ar_ec2_nids" {
                     "files": {
                       "collect_list": [
                         {
-                          "file_path": "/var/log/suricata/fast.log",
-                          "log_group_name": "/secops/suricata/alerts",
+                          "file_path": "/var/log/suricata/eve.json",
+                          "log_group_name": "/secops/suricata/eve",
                           "log_stream_name": "{instance_id}",
                           "timezone": "UTC"
                         }
@@ -370,19 +339,4 @@ resource "aws_instance" "ar_ec2_nids" {
   tags = {
     Name = "ar-ec2-nids"
   }
-}
-
-# Outputs
-# =========
-
-# affichage ip publique victime
-output "victim_public_ip" {
-  description = "IPv4 publique de victime"
-  value       = aws_instance.ar_ec2_victim.public_ip
-}
-
-# affichage ip privee NIDS
-output "nids_private_ip" {
-  description = "IPv4 privee de NIDS"
-  value       = aws_instance.ar_ec2_nids.private_ip
 }
