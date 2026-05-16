@@ -183,3 +183,4 @@ fields @timestamp, src_ip, dest_ip, alert.signature, alert.category
 Cela donne les alertes suivantes : 
 
 ![Alertes CW depuis eve.json](./img/eve-depuis-cw.png)
+
