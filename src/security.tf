@@ -15,8 +15,10 @@ resource "aws_security_group" "ar_sg_victim" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
+  
+  # trivy:ignore:AVD-AWS-0104 - Egress ouvert requis pour l'installation des paquets et maj de Suricata
   egress {
+    description = "Autorise le trafic sortant vers Internet"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -61,6 +63,7 @@ resource "aws_security_group" "ar_sg_nids" {
   # }
 
   egress {
+    description = "Autorise le trafic sortant vers Internet"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

@@ -1,4 +1,5 @@
 # Logs de Lambda
+# trivy:ignore:AVD-AWS-0017 - On garde uniquement le chiffrement natif AWS
 resource "aws_cloudwatch_log_group" "ar_cw_suricata" {
   name              = "/secops/suricata/alerts"
   
@@ -45,6 +46,11 @@ resource "aws_lambda_function" "ar_secops_lambda" {
   timeout       = 10 # secondes
 
   source_code_hash = data.archive_file.ar_lambda_zip.output_base64sha256
+
+  # Ajout pour résoudre AWS-0066 (Traçage activé)
+  tracing_config {
+    mode = "Active"
+  }
 }
 
 # Bridge de CW -> Lambda

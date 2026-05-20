@@ -7,6 +7,7 @@ variable "aws_region" {
 }
 
 # VPC Principal
+# trivy:ignore:AVD-AWS-0178 - Flow logs non requis pour l'architecture NIDS actuelle
 resource "aws_vpc" "ar_vpc_main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -31,6 +32,7 @@ resource "aws_internet_gateway" "ar_igw_main" {
 # ==========
 
 # Public
+# trivy:ignore:AVD-AWS-0164 - Risque accepté : Le Honeypot doit être exposé sur Internet
 resource "aws_subnet" "ar_subnet_public" {
   vpc_id                  = aws_vpc.ar_vpc_main.id
   cidr_block              = "10.0.1.0/24"
