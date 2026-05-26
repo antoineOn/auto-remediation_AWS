@@ -7,7 +7,10 @@ from botocore.exceptions import ClientError
 
 ec2 = boto3.client('ec2')
 # Récupération de l'ID de la NACL
-NACL_ID = os.environ.get('NACL_ID')
+NACL_ID      = os.environ.get('NACL_ID')
+NIDS_IP      = os.environ.get('NIDS_IP')
+VICT_IP_PUBL = os.environ.get('VICT_IP_PUBL')
+VICT_IP_PRIV = os.environ.get('VICT_IP_PRIV')
 
 def get_next_rule_number(nacl_id):
     """Trouve le prochain numéro de règle disponible entre 1 et 99 pour le blocage."""
@@ -27,6 +30,9 @@ def get_next_rule_number(nacl_id):
     return next_rule
 
 def block_ip(ip_attacker):
+    if ip_attacker in (NIDS_IP, VICT_IP_PUBL, VICT_IP_PRIV) :
+        print('SOAR : Info : l\'ip à bloquer est celle d\'un des compsants AWS, pas de blocage effectué.')
+        return
     try:
         rule_num = get_next_rule_number(NACL_ID)
         if not rule_num:
@@ -70,6 +76,7 @@ def lambda_handler(event, context):
             if suricata_alert.get('event_type') == 'alert':
                 signature = suricata_alert.get('alert', {}).get('signature', 'Inconnue')
                 print(f"Alerte suricata levée. Attaquant : {attaquant_ip} | Cible : {cible_ip} | Attaque : {signature}")
+                block_ip(attaquant_ip)
             else:
                 print(f"Flux normal depuis : {attaquant_ip}")
                 

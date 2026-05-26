@@ -25,6 +25,14 @@ resource "aws_security_group" "ar_sg_victim" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Ping"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   tags = {
     Name = "ar-sg-victim"
   }

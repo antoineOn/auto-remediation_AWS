@@ -75,6 +75,9 @@ resource "aws_lambda_function" "ar_secops_lambda" {
   environment {
     variables = {
       NACL_ID = aws_network_acl.ar_nacl_public.id 
+      NIDS_IP = aws_instance.ar_ec2_nids.private_ip
+      VICT_IP_PUBL = aws_instance.ar_ec2_victim.private_ip
+      VICT_IP_PRIV = aws_instance.ar_ec2_victim.public_ip
     }
   }
 }

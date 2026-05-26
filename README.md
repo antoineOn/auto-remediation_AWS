@@ -184,3 +184,57 @@ Cela donne les alertes suivantes :
 
 ![Alertes CW depuis eve.json](./img/eve-depuis-cw.png)
 
+## Intégration Lambda
+
+On fait souscrire la lambda au log group CloudWatch qui nous intéresse. On précise que le déclenchement doit faire suite à un event-type égal à `alert`. Il y a une protection pour ne pas bloquer les IPs utilisées dans le dispositif deployé sur AWS. Le code détaillé de cette fonction lambda est situé dans le fichier [lambda_function.py](./src/lambda_function.py).
+
+La fonction a les rôles suffisants pour modifier la NACL passée par variable d'environnement de manière à bloquer indéfiniment l'IP de l'attaquant.
+
+# Déroulement d'une attaque
+
+### Mise en place du logging
+
+Un nouveau log group est crée dans CloudWatch. Elle contient les logs 
+
+### Reconnaissance
+
+L'attaquant est capable de faire un ping sur la machine victime
+
+![ping victime depuis attaquant](./img/ping-victime-from-attacker.png)
+
+On a aussitôt l'information dans le log group qu'une reqûete ICMP de type 8 (echo) a été effectuée 
+
+![requete ping effectuee vue depuis CloudWatch](./img/ping-detecte.png)
+
+### Simulation d'attaque
+
+On simule une attaque par brute force depuis la machine attaquant : 
+
+```sh
+nmap -p 22 -sV -sC -A*.*.*.19
+```
+
+### Remédiation automatique
+
+L'attaque SSH a été directement détectée par Suricata, envoyée à la fonction Lambda qui a modifé la NACL pour bannir l'IP de l'attaquant.
+
+![remédiation automatique depuis la lambda](./img/auto-remdiation.png)
+
+### Blocage de l'attaquant
+
+Le SSH est inaccessible
+
+```sh
+ssh: connect to host *.*.*.19 port 22: Connection timed out
+```
+
+De plus, la victime n'est plus atteignable avec la commande ping. Tout le traffic provenant de cette ip a bien été bloqué (Protocole `-1`).
+
+```sh
+$ ping -c 4 *.*.*.19
+PING *.*.*.19 (*.*.*.19) 56(84) bytes of data.
+
+--- *.*.*.19 ping statistics ---
+4 packets transmitted, 0 received, 100% packet loss, time 3079ms
+```
+
