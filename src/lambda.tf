@@ -1,7 +1,7 @@
 # Logs de Lambda
 # trivy:ignore:AVD-AWS-0017 - On garde uniquement le chiffrement natif AWS
 resource "aws_cloudwatch_log_group" "ar_cw_suricata" {
-  name              = "/secops/suricata/alerts"
+  name              = "/secops/suricata/eve"
   
   # inutile de garder plus dans notre cas de figure
   retention_in_days = 14 
@@ -36,6 +36,26 @@ resource "aws_iam_role_policy_attachment" "ar_lambda_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Autorise la Lambda à lire et modifier les règles des NACLs
+resource "aws_iam_role_policy" "ar_lambda_nacl_policy" {
+  name = "ar-lambda-nacl-policy"
+  role = aws_iam_role.ar_lambda_exec_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkAclEntry",
+          "ec2:DescribeNetworkAcls"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Fonction Lambda
 resource "aws_lambda_function" "ar_secops_lambda" {
   filename      = data.archive_file.ar_lambda_zip.output_path
@@ -47,9 +67,15 @@ resource "aws_lambda_function" "ar_secops_lambda" {
 
   source_code_hash = data.archive_file.ar_lambda_zip.output_base64sha256
 
-  # Ajout pour résoudre AWS-0066 (Traçage activé)
   tracing_config {
     mode = "Active"
+  }
+
+  # Injection de ID de NACL
+  environment {
+    variables = {
+      NACL_ID = aws_network_acl.ar_nacl_public.id 
+    }
   }
 }
 
