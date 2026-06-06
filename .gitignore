@@ -1,0 +1,7 @@
+.env
+*.tfstate
+*.tfstate.backup
+src/.terraform
+src/.terraform.lock.hcl
+src/.terraform.tfstate.lock.info
+*.zip
